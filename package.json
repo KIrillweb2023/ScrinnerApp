@@ -8,12 +8,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-     "start": "node bot.js",
-    "dev": "node bot.js"
+    "start": "node webhook-bot.js",
+    "dev": "nodemon webhook-bot.js", 
+    "polling": "node polling-bot.js" 
   },
   "dependencies": {
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "node-telegram-bot-api": "^0.66.0",
     "nodemon": "^3.1.10"
   }
