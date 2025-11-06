@@ -40,9 +40,7 @@ const CRYPTO_SYMBOLS = [
   'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'WIFUSDT',
   'BOMEUSDT', 'MEMEUSDT', 'DOGSUSDT', 'POPCATUSDT', 'MYROUSDT',
   
-  // Мем-монеты
-  'DOGEUSDT', 'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT',
-  'WIFUSDT', 'MEMEUSDT', 'BOMEUSDT', 'POPCATUSDT', 'MYROUSDT',
+  
   
   // DeFi токены
   'UNIUSDT', 'CAKEUSDT', 'COMPUSDT', 'YFIUSDT', 'CRVUSDT',
@@ -837,49 +835,9 @@ function sendHelp(chatId) {
   });
 }
 
-// console.log(`✅ Арбитражный бот запущен!`);
-// console.log(`📊 База данных: ${CRYPTO_SYMBOLS.length} монет`);
-// console.log(`🔥 Активный мониторинг: ${ACTIVE_SYMBOLS.length} монет`);
-// console.log(`🏪 Подключено бирж: ${Object.keys(EXCHANGES).length}`);
+console.log(`✅ Арбитражный бот запущен!`);
+console.log(`📊 База данных: ${CRYPTO_SYMBOLS.length} монет`);
+console.log(`🔥 Активный мониторинг: ${ACTIVE_SYMBOLS.length} монет`);
+console.log(`🏪 Подключено бирж: ${Object.keys(EXCHANGES).length}`);
 
 
-// ==================== ДОПОЛНИТЕЛЬНО ДЛЯ RAILWAY ====================
-
-// Функция для логирования статуса
-function logStatus() {
-  console.log('🤖 Арбитражный бот активен на Railway');
-  console.log('✅ POLLING режим работает');
-  console.log('🔍 Мониторинг арбитража запущен');
-  console.log('📊 Статистика:', {
-    users: arbitrageUsers.size,
-    symbols: CRYPTO_SYMBOLS.length,
-    activeSymbols: ACTIVE_SYMBOLS.length,
-    exchanges: Object.keys(EXCHANGES).length
-  });
-}
-
-// Периодическое логирование
-setInterval(logStatus, 5 * 60 * 1000); // Каждые 5 минут
-
-// Обработка graceful shutdown
-process.on('SIGINT', () => {
-  console.log('🛑 Получен SIGINT, останавливаю бота...');
-  bot.stopPolling();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('🛑 Получен SIGTERM, останавливаю бота...');
-  bot.stopPolling();
-  process.exit(0);
-});
-
-
-// ==================== ЗАПУСК ====================
-
-console.log('🚀 Запуск арбитражного бота на Railway...');
-console.log('⏰ Время запуска:', new Date().toISOString());
-console.log('🔧 Режим: PRODUCTION');
-
-// Первоначальный статус
-setTimeout(logStatus, 5000);
