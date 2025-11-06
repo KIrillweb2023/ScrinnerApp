@@ -933,6 +933,30 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
   }, 3000);
 });
 
+// ==================== KEEP ALIVE ====================
+
+// Улучшенный keep-alive с логированием
+let heartbeatCount = 0;
+function startHeartbeat() {
+  setInterval(() => {
+    heartbeatCount++;
+    const memoryUsage = process.memoryUsage();
+    const activeUsers = Array.from(arbitrageUsers.values()).filter(user => user.active).length;
+    
+    if (heartbeatCount % 30 === 0) { // Логируем каждые 30 секунд
+      console.log('💓 Heartbeat:', {
+        uptime: Math.floor(process.uptime()),
+        memory: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+        activeUsers: activeUsers,
+        totalUsers: arbitrageUsers.size
+      });
+    }
+  }, 1000);
+}
+
+// Запускаем heartbeat
+startHeartbeat();
+
 // Обработчики для graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 Получен SIGTERM, останавливаем бота...');
@@ -959,8 +983,12 @@ process.on('SIGINT', () => {
 // Keep-alive чтобы контейнер не останавливался
 process.on('uncaughtException', (error) => {
   console.error('❌ Необработанное исключение:', error);
+  // НЕ завершаем процесс!
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Необработанный промис:', reason);
+  // НЕ завершаем процесс!
 });
+
+console.log('✅ Приложение запущено и будет работать постоянно');
