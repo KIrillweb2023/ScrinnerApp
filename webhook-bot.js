@@ -854,47 +854,113 @@ function askForSymbol(chatId) {
 
 //  WEBHOOK  
 app.post(`/bot${TOKEN}`, (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
+  console.log('📨 Получено сообщение от Telegram');
+  try {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('❌ Ошибка обработки сообщения:', error);
+    res.sendStatus(200); // Всегда возвращаем 200 чтобы Telegram не отключал webhook
+  }
 });
 
+// Проверка что сервер работает
 app.get('/', (req, res) => {
   res.json({ 
     status: 'Arbitrage Bot is running!',
     users: arbitrageUsers.size,
-    active_monitoring: Array.from(arbitrageUsers.values()).filter(user => user.active).length
+    active_monitoring: Array.from(arbitrageUsers.values()).filter(user => user.active).length,
+    timestamp: new Date().toISOString()
   });
 });
 
+// Health check для Railway
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    time: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Установка webhook
 async function setupWebhook() {
   try {
     const webhookUrl = `${WEBHOOK_URL}/bot${TOKEN}`;
     console.log('🔄 Устанавливаю webhook:', webhookUrl);
     
     await bot.setWebHook(webhookUrl);
-    console.log('✅ Webhook установлен:', webhookUrl);
+    console.log('✅ Webhook установлен');
     
+    return true;
   } catch (error) {
     console.error('❌ Ошибка установки webhook:', error.message);
+    return false;
   }
 }
 
-app.listen(PORT, async () => {
+// Обработчик ошибок бота
+bot.on('error', (error) => {
+  console.error('❌ Ошибка Telegram Bot:', error);
+});
+
+// Логируем входящие сообщения
+bot.on('message', (msg) => {
+  console.log('💬 Получено сообщение от', msg.from?.username || msg.chat.id, ':', msg.text);
+});
+
+// Логируем отправку сообщений
+bot.on('polling_error', (error) => {
+  console.error('❌ Polling error:', error);
+});
+
+// Запуск сервера
+const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Webhook сервер запущен на порту ${PORT}`);
-  
-  setTimeout(async () => {
-    await setupWebhook();
-  }, 2000);
-  
+  console.log(`🌐 Webhook URL: ${WEBHOOK_URL}/bot${TOKEN}`);
   console.log(`📊 База данных: ${CRYPTO_SYMBOLS.length} монет`);
   console.log(`🔥 Активный мониторинг: ${ACTIVE_SYMBOLS.length} монет`);
   console.log(`🏪 Подключено бирж: ${Object.keys(EXCHANGES).length}`);
+  
+  // Ждем перед установкой webhook
+  setTimeout(async () => {
+    const success = await setupWebhook();
+    if (success) {
+      console.log('🎉 Бот успешно запущен и готов к работе!');
+    } else {
+      console.log('⚠️ Бот запущен, но webhook не установлен. Проверьте настройки.');
+    }
+  }, 3000);
 });
 
-process.on('SIGINT', () => {
-  console.log('🛑 Останавливаем бота...');
+// Обработчики для graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 Получен SIGTERM, останавливаем бота...');
   arbitrageUsers.forEach((settings) => {
     settings.active = false;
   });
-  process.exit(0);
+  server.close(() => {
+    console.log('✅ Сервер остановлен');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 Получен SIGINT, останавливаем бота...');
+  arbitrageUsers.forEach((settings) => {
+    settings.active = false;
+  });
+  server.close(() => {
+    console.log('✅ Сервер остановлен');
+    process.exit(0);
+  });
+});
+
+// Keep-alive чтобы контейнер не останавливался
+process.on('uncaughtException', (error) => {
+  console.error('❌ Необработанное исключение:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Необработанный промис:', reason);
 });
