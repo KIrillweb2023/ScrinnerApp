@@ -24,92 +24,38 @@ const bot = new TelegramBot(TOKEN, {
 console.log('🚀 Арбитражный бот запущен...');
 
 
+//  МОНЕТЫ 
 const CRYPTO_SYMBOLS = [
-  // ТОП-50 ПО КАПИТАЛИЗАЦИИ 
+  // ТОП-30 ПО КАПИТАЛИЗАЦИИ (самые ликвидные)
   'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
   'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'LINKUSDT',
   'MATICUSDT', 'TRXUSDT', 'LTCUSDT', 'BCHUSDT', 'ATOMUSDT',
   'ETCUSDT', 'XLMUSDT', 'FILUSDT', 'APTUSDT', 'ARBUSDT',
   'OPUSDT', 'NEARUSDT', 'VETUSDT', 'ALGOUSDT', 'ICPUSDT',
   'EOSUSDT', 'AAVEUSDT', 'GRTUSDT', 'QNTUSDT', 'XTZUSDT',
-  'SANDUSDT', 'MANAUSDT', 'EGLDUSDT', 'THETAUSDT', 'AXSUSDT',
-  'FTMUSDT', 'RUNEUSDT', 'KAVAUSDT', 'MKRUSDT', 'SNXUSDT',
-  'CRVUSDT', 'COMPUSDT', 'YFIUSDT', 'DASHUSDT', 'ZECUSDT',
-  'ENJUSDT', 'BATUSDT', 'ZILUSDT', 'IOTAUSDT', 'NEOUSDT',
 
-  // МЕМ-КОИНЫ (НУ ТИПО БОЛЬШЕ КРУТЯТСЯ НА БИРЖЕ)
+  // МЕМ-КОИНЫ (только самые популярные)
   'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'WIFUSDT',
   'MEMEUSDT', 'BOMEUSDT', 'POPCATUSDT', 'MYROUSDT', 'DOGSUSDT',
-  'TOSHIUSDT', 'WENUSDT', 'CATUSDT', 'MOGUSDT', 'NIZAUSDT',
-  'TURBOUSDT', 'ANDYUSDT', 'LOLLYUSDT', 'MOUTAIUSDT', 'PENGUUSDT',
-  'WOWUSDT', 'SMURFCATUSDT', 'MICKEYUSDT', 'SATOSHIUSDT', 'DOGE20USDT',
 
-  // DeFi ТОКЕНЫ 
-  'UNIUSDT', 'CAKEUSDT', 'SUSHIUSDT', '1INCHUSDT', 'BALUSDT',
-  'BANDUSDT', 'UMAUSDT', 'RENUSDT', 'RSRUSDT', 'COTIUSDT',
-  'OCEANUSDT', 'NMRUSDT', 'REQUSDT', 'LRCUSDT', 'OMGUSDT',
-  'CELRUSDT', 'ANKRUSDT', 'STORJUSDT', 'HOTUSDT', 'VTHOUSDT',
-
-  //  AI ТОКЕНЫ 
+  // AI ТОКЕНЫ (перспективные)
   'FETUSDT', 'AGIXUSDT', 'RNDRUSDT', 'TAOUSDT', 'OCEANUSDT',
-  'AKTUSDT', 'NFPUSDT', 'AIUSDT', 'PAALUSDT', 'CTXCUSDT',
-  'VAIUSDT', 'DBCUSDT', 'NMRUSDT', 'PRIMEUSDT', 'XAIUSDT',
-  'ARSUSDT', 'ORAIUSDT', 'PHBUSDT', 'ALIUSDT', 'MYRIAUSDT',
 
-  //  GAMING/METAVERSE 
-  'GALAUSDT', 'ENJUSDT', 'SANDUSDT', 'MANAUSDT', 'AXSUSDT',
-  'ILVUSDT', 'YGGUSDT', 'PIXELUSDT', 'BEAMUSDT', 'ACEUSDT',
-  'MAGICUSDT', 'GHSTUSDT', 'CEREUSDT', 'SLPUSDT', 'ALICEUSDT',
-  'DARUSDT', 'VRAUSDT', 'TLMUSDT', 'REVVUSDT', 'PYRUSDT',
+  // GAMING/METAVERSE (топ-5)
+  'GALAUSDT', 'SANDUSDT', 'MANAUSDT', 'AXSUSDT', 'PIXELUSDT',
 
-  //  LAYER 2 
-  'ARBUSDT', 'OPUSDT', 'MATICUSDT', 'IMXUSDT', 'METISUSDT',
-  'MNTUSDT', 'STRKUSDT', 'ZKUSDT', 'LRCUSDT', 'BOBAUSDT',
-  'CELOUSDT', 'SKLUSDT', 'OMGUSDT', 'LOOMUSDT', 'PERPUSDT',
-
-  //  REAL WORLD ASSETS (RWA) 
-  'ONDOUSDT', 'TRUUSDT', 'CFGUSDT', 'RIOUSDT', 'PROUSDT',
-  'IXSUSDT', 'LCXUSDT', 'HIFIUSDT', 'TRACUSDT', 'LABSUSDT',
-
-
-  //  ORACLES 
-  'LINKUSDT', 'BANDUSDT', 'TRBUSDT', 'API3USDT', 'DIAUSDT',
-  'NESTUSDT', 'POKTUSDT', 'UMABUSD', 'VXVUSDT', 'XYOUSDT',
-
-  //  NEW & TRENDING 
-  'SEIUSDT', 'SUIUSDT', 'TIAUSDT', 'INJUSDT', 'JUPUSDT',
-  'PYTHUSDT', 'JTOUSDT', 'PORTALUSDT', 'PENDLEUSDT', 'DYMUSDT',
-  'ALTUSDT', 'ZETAUSDT', 'MAVIAUSDT', 'AXLUSDT', 'DUSKUSDT',
-  'METISUSDT', 'RONINUSDT', 'XAIUSDT', 'WUSDT', 'NTRNUSDT',
-
+  // НОВЫЕ ТОКЕНЫ (самые трендовые)
+  'JUPUSDT', 'PYTHUSDT', 'JTOUSDT', 'PENDLEUSDT', 'ONDOUSDT',
+  'TIAUSDT', 'SEIUSDT', 'SUIUSDT', 'INJUSDT'
 ];
 
 const ACTIVE_SYMBOLS = [
-  // Топ-20 по объему
+  // Только самые ликвидные и волатильные
   'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
   'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'LINKUSDT',
-  'MATICUSDT', 'TRXUSDT', 'LTCUSDT', 'BCHUSDT', 'ATOMUSDT',
-  'SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'UNIUSDT', 'ARBUSDT',
-
-  // Высоковолатильные мемы
-  'BONKUSDT', 'WIFUSDT', 'MEMEUSDT', 'BOMEUSDT', 'POPCATUSDT',
-  'MYROUSDT', 'DOGSUSDT', 'TURBOUSDT', 'ANDYUSDT', 'WENUSDT',
-
-  // AI сектор
-  'FETUSDT', 'AGIXUSDT', 'RNDRUSDT', 'TAOUSDT', 'OCEANUSDT',
-  'AKTUSDT', 'NFPUSDT', 'AIUSDT', 'PAALUSDT', 'CTXCUSDT',
-
-  // Gaming
-  'GALAUSDT', 'SANDUSDT', 'MANAUSDT', 'AXSUSDT', 'PIXELUSDT',
-  'BEAMUSDT', 'ACEUSDT', 'MAGICUSDT', 'YGGUSDT', 'ILVUSDT',
-
-  // Новые токены
-  'JUPUSDT', 'PYTHUSDT', 'JTOUSDT', 'PENDLEUSDT', 'ONDOUSDT',
-  'DYMUSDT', 'ALTUSDT', 'ZETAUSDT', 'STRKUSDT', 'TIAUSDT',
-
-  // DeFi
-  'AAVEUSDT', 'MKRUSDT', 'COMPUSDT', 'CRVUSDT', 'SNXUSDT',
-  'SUSHIUSDT', 'CAKEUSDT', '1INCHUSDT', 'BALUSDT', 'UNIUSDT'
+  'MATICUSDT', 'LTCUSDT', 'ATOMUSDT', 'SHIBUSDT', 'PEPEUSDT',
+  'ARBUSDT', 'OPUSDT', 'FETUSDT', 'AGIXUSDT', 'JUPUSDT',
+  'PYTHUSDT', 'GALAUSDT', 'SANDUSDT', 'MANAUSDT', 'BONKUSDT'
 ];
 
 
@@ -416,7 +362,7 @@ async function searchSymbol(chatId, symbol) {
 
 async function sendEnhancedPrices(chatId) {
   const loadingMsg = await bot.sendMessage(chatId, 
-    "⚡ <b>Мгновенная загрузка цен...</b>\n<i>Обновленная база из 300+ монет</i>", 
+    "⚡ <b>Мгновенная загрузка цен...</b>\n", 
     { parse_mode: 'HTML' }
   );
 
@@ -467,20 +413,32 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
       const prices = await getAllEnhancedExchangePrices(symbol);
       if (prices.length < 2) continue;
 
+      
       prices.sort((a, b) => a.price - b.price);
       const bestBuy = prices[0];
       const bestSell = prices[prices.length - 1];
       
-      const profit = ((bestSell.price - bestBuy.price) / bestBuy.price * 100) - 0.15;
       
-      if (profit >= minProfit && bestBuy.name !== bestSell.name) {
+      const priceDifference = bestSell.price - bestBuy.price;
+      const profitPercentage = (priceDifference / bestBuy.price) * 100;
+      
+      
+      const netProfit = profitPercentage - 0.2;
+      
+      const isDifferentExchange = bestBuy.name !== bestSell.name;
+      const isSignificantProfit = netProfit >= minProfit;
+      const isPriceDifferenceSignificant = priceDifference > bestBuy.price * 0.0001; 
+      
+      if (isDifferentExchange && isSignificantProfit && isPriceDifferenceSignificant) {
         opportunities.push({
           symbol,
           buyExchange: bestBuy,
           sellExchange: bestSell,
           buyPrice: bestBuy.price,
           sellPrice: bestSell.price,
-          profit: profit
+          profit: Number(netProfit.toFixed(3)), 
+          priceDifference: Number(priceDifference.toFixed(6)),
+          timestamp: Date.now()
         });
       }
     } catch (error) {
@@ -488,10 +446,16 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
     }
   }
 
+
   return opportunities
-    .sort((a, b) => b.profit - a.profit)
-    .slice(0, 10);
+    .filter(opp => opp.profit > 0) 
+    .sort((a, b) => {
+     
+      if (b.profit !== a.profit) return b.profit - a.profit;
+      return b.priceDifference - a.priceDifference;
+    }) 
 }
+
 async function getAllEnhancedExchangePrices(symbol) {
   const supportedExchanges = Object.entries(EXCHANGES)
     .filter(([, exchange]) => 
@@ -499,19 +463,23 @@ async function getAllEnhancedExchangePrices(symbol) {
       exchange.supportedSymbols === CRYPTO_SYMBOLS
     )
     .sort(([,a], [,b]) => b.weight - a.weight)
-    .slice(0, 6);  
+    .slice(0, 5);  
 
   const pricePromises = supportedExchanges.map(async ([key, exchange]) => {
     try {
       const price = await Promise.race([
         getPriceFromExchange(exchange.api(symbol), key, symbol),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1800))
       ]);
+      
+      if (!price || price <= 0 || price > 1000000) {
+        return null;
+      }
       
       return {
         name: exchange.name,
         icon: getExchangeIcon(exchange.name),
-        price: price,
+        price: Number(price.toFixed(8)), 
         weight: exchange.weight,
         key: key
       };
@@ -521,11 +489,12 @@ async function getAllEnhancedExchangePrices(symbol) {
   });
 
   const results = await Promise.allSettled(pricePromises);
+  
   return results
-    .filter(result => result.status === 'fulfilled' && result.value?.price > 0)
-    .map(result => result.value);
+    .filter(result => result.status === 'fulfilled' && result.value !== null)
+    .map(result => result.value)
+    .filter(exchange => exchange !== null && exchange.price > 0);
 }
-
 
 async function startArbitrageMonitoring(chatId) {
   let checkCount = 0;
@@ -533,7 +502,7 @@ async function startArbitrageMonitoring(chatId) {
   
   if (!userSettings) return;
 
-  arbitrageStats.set(chatId, { found: 0, checks: 0 });
+  arbitrageStats.set(chatId, { found: 0, checks: 0, lastFound: 0 });
 
   const monitor = async () => {
     if (!userSettings.active) return;
@@ -542,33 +511,39 @@ async function startArbitrageMonitoring(chatId) {
       checkCount++;
       const opportunities = await findEnhancedArbitrageOpportunities(userSettings.minProfit);
       
-    
       const stats = arbitrageStats.get(chatId);
       stats.checks = checkCount;
       stats.found += opportunities.length;
+      
+      if (opportunities.length > 0) {
+        stats.lastFound = Date.now();
+      }
 
-     
+      // 🔧 УМНЫЕ УВЕДОМЛЕНИЯ
       const now = Date.now();
       for (const opp of opportunities) {
-        const opportunityKey = `${opp.symbol}_${opp.buyExchange.name}_${opp.sellExchange.name}`;
+        const opportunityKey = `${opp.symbol}_${Math.round(opp.profit * 100)}`; // 🔧 Группировка по прибыли
         
-        if (now - userSettings.lastNotification > 30000 || 
+        if (now - userSettings.lastNotification > 45000 || // 🔧 Увеличили интервал
             !userSettings.lastOpportunity || 
             userSettings.lastOpportunity !== opportunityKey) {
           
           await sendArbitrageNotification(chatId, opp, checkCount);
           userSettings.lastNotification = now;
           userSettings.lastOpportunity = opportunityKey;
-          await new Promise(resolve => setTimeout(resolve, 100)); 
+          await new Promise(resolve => setTimeout(resolve, 500)); // 🔧 Увеличили задержку
         }
       }
 
-      if (checkCount % 10 === 0) {
+      // 🔧 УЛУЧШЕННЫЙ СТАТУС
+      if (checkCount % 15 === 0) { // 🔧 Реже статус
+        const successRate = stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0;
         await bot.sendMessage(chatId,
           `🔍 <b>Мониторинг активен</b>\n` +
-          `📊 Проверок: ${checkCount}\n` +
+          `📊 Проверок: ${stats.checks}\n` +
           `🎯 Найдено: ${stats.found}\n` +
-          `⚡ Следующая проверка через 2с...`,
+          `📈 Успешность: ${successRate}%\n` +
+          `⚡ Следующая проверка через 3с...`,
           { parse_mode: 'HTML' }
         );
       }
@@ -578,12 +553,13 @@ async function startArbitrageMonitoring(chatId) {
     }
 
     if (userSettings.active) {
-      setTimeout(monitor, 2000);
+      setTimeout(monitor, 3000); // 🔧 Увеличили интервал до 3 секунд
     }
   };
 
   monitor();
 }
+
 
 async function sendArbitrageNotification(chatId, opp, checkCount) {
   const message = `
@@ -597,19 +573,19 @@ ${getCryptoIcon(opp.symbol)} <b>${getSymbolName(opp.symbol)}</b>
 🔽 <b>ПРОДАЖА:</b> ${opp.sellExchange.icon} ${opp.sellExchange.name}  
    💵 ${formatPrice(opp.sellPrice)}
 
-💰 <b>ПРИБЫЛЬ:</b> <u>${opp.profit.toFixed(2)}%</u>
+💰 <b>ПРИБЫЛЬ:</b> <u>${opp.profit.toFixed(3)}%</u>
+📐 <b>Разница:</b> ${formatPrice(opp.priceDifference)}
 
 ⚡ <b>ДЕЙСТВИЯ:</b>
 1. Купить на ${opp.buyExchange.name}
-2. Продать на ${opp.sellExchange.name}
+2. Перевести на ${opp.sellExchange.name}
+3. Продать с прибылью
 
 ⏰ ${new Date().toLocaleTimeString()}
   `;
 
   await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
 }
-
-
 
 function setMinProfit(chatId, profit) {
   const userSettings = arbitrageUsers.get(chatId) || { active: false };
@@ -725,7 +701,6 @@ function formatPrice(price) {
   return `$${price.toFixed(2)}`;
 }
 
-
 async function getPriceFromExchange(apiUrl, exchangeKey, symbol) {
   const cacheKey = `${exchangeKey}_${symbol}`;
   const data = await enhancedRequest(apiUrl, cacheKey, 1500);
@@ -737,12 +712,6 @@ async function getPriceFromExchange(apiUrl, exchangeKey, symbol) {
   
   if (!price || price <= 0) throw new Error('Invalid price');
   return price;
-}
-
-function formatVolume(volume) {
-  if (volume >= 1000000) return (volume / 1000000).toFixed(1) + 'M';
-  if (volume >= 1000) return (volume / 1000).toFixed(1) + 'K';
-  return volume.toFixed(0);
 }
 
 function toggleEnhancedArbitrage(chatId) {
@@ -779,11 +748,14 @@ function toggleEnhancedArbitrage(chatId) {
 }
 
 function showEnhancedStats(chatId) {
-  const stats = arbitrageStats.get(chatId) || { found: 0, checks: 0 };
+  const stats = arbitrageStats.get(chatId) || { found: 0, checks: 0, lastFound: 0 };
   const userSettings = arbitrageUsers.get(chatId);
   
+  const successRate = stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0;
+  const lastFound = stats.lastFound ? new Date(stats.lastFound).toLocaleTimeString() : 'не найдено';
+  
   const message = `
-📊 <b>УЛУЧШЕННАЯ СТАТИСТИКА СИСТЕМЫ</b>
+📊 <b>СТАТИСТИКА СИСТЕМЫ</b>
 
 🎯 <b>Текущий статус:</b> ${userSettings?.active ? '🟢 АКТИВЕН' : '🔴 ВЫКЛЮЧЕН'}
 📈 <b>Минимальная прибыль:</b> ${userSettings?.minProfit || 0.3}%
@@ -791,29 +763,14 @@ function showEnhancedStats(chatId) {
 📈 <b>Эффективность:</b>
    🔍 Всего проверок: ${stats.checks}
    🎯 Найдено возможностей: ${stats.found}
-   📊 Успешность: ${stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0}%
+   📊 Успешность: ${successRate}%
+   ⏰ Последняя находка: ${lastFound}
 
 ⚡ <b>Масштаб системы:</b>
    🏪 Активных бирж: ${Object.keys(EXCHANGES).length}
    💰 Всего монет в базе: ${CRYPTO_SYMBOLS.length}
    🔥 Активных в проверке: ${ACTIVE_SYMBOLS.length}
-   ⏱️ Время проверки: 1-2 секунды
-
-🎪 <b>Категории монет:</b>
-   • Топ-50 по капитализации
-   • 25+ мем-коинов (высокая волатильность)
-   • DeFi токены
-   • AI сектор (20+ токенов)
-   • Gaming/Metaverse
-   • Layer 2 решения
-   • RWA (Real World Assets)
-   • Новые перспективные
-
-💡 <b>Рекомендации:</b>
-• Используйте 0.1-0.3% для максимального охвата
-• Мем-коины дают больше арбитражных возможностей
-• AI токены - перспективный сектор
-• Проверяйте ликвидность перед сделкой
+   ⏱️ Интервал проверки: 3 секунды
   `;
 
   bot.sendMessage(chatId, message, { 
@@ -826,14 +783,14 @@ function sendEnhancedSettings(chatId) {
   const userSettings = arbitrageUsers.get(chatId) || { minProfit: 0.3, notifications: true };
   
   const message = `
-⚙️ <b>УЛУЧШЕННЫЕ НАСТРОЙКИ АРБИТРАЖА</b>
+⚙️ <b>НАСТРОЙКИ АРБИТРАЖА</b>
 
 Текущие настройки:
 • 🎯 Минимальная прибыль: ${userSettings.minProfit}%
 • 🔔 Уведомления: ${userSettings.notifications ? 'ВКЛ' : 'ВЫКЛ'}
 
 Выберите минимальную прибыль для уведомлений:
-<code>0.1% - Максимальная чувствительность (300+ монет)
+<code>0.1% - Максимальная чувствительность
 0.3% - Оптимальный баланс  
 0.5% - Стабильная прибыль
 1-2% - Высокая доходность
@@ -847,28 +804,21 @@ function sendEnhancedSettings(chatId) {
 }
 
 function sendEnhancedHelp(chatId) {
-  const helpMessage = `
-🆘 <b>ПОМОЩЬ ПО УЛУЧШЕННОМУ АРБИТРАЖНОМУ БОТУ</b>
+const helpMessage = `
+🆘 <b>ПОМОЩЬ ПО АРБИТРАЖНОМУ БОТУ</b>
 
 ⚡ <b>Масштаб системы:</b>
-• <b>${CRYPTO_SYMBOLS.length}+ монет</b> в базе данных
+• <b>${CRYPTO_SYMBOLS.length} монет</b> в базе данных
 • <b>${Object.keys(EXCHANGES).length} бирж</b> в реальном времени  
 • <b>${ACTIVE_SYMBOLS.length} активных монет</b> в проверке
 • Все категории: от Bitcoin до AI токенов
 
-🎯 <b>Новые категории монет:</b>
+🎯 <b>Категории монет:</b>
 • ₿ <b>Голубые фишки</b> (BTC, ETH, BNB) - стабильность
-• 🐶 <b>Мем-коины</b> (25+ токенов) - высокая волатильность
-• 🤖 <b>AI токены</b> (20+ проектов) - будущее технологий
+• 🐶 <b>Мем-коины</b> - высокая волатильность
+• 🤖 <b>AI токены</b> - перспективные проекты
 • 🎮 <b>Gaming/Metaverse</b> - растущий сектор
-• 🌐 <b>RWA</b> - реальные активы
-• 🔷 <b>DeFi</b> - децентрализованные финансы
-
-🔥 <b>Новые функции:</b>
-• <b>Топ арбитраж</b> - только лучшие возможности
-• <b>Поиск монет</b> - мгновенная проверка любой пары
-• <b>Анализ бирж</b> - сравнение и статистика
-• <b>Анализ объемов</b> - безопасные сделки
+• 🚀 <b>Новые токены</b> - трендовые монеты
 
 💡 <b>Стратегии:</b>
 • <b>Мем-коины</b> - больше арбитражных возможностей
@@ -877,10 +827,9 @@ function sendEnhancedHelp(chatId) {
 • <b>Голубые фишки</b> - меньше риска
 
 🏪 <b>Поддерживаемые биржи:</b>
-🟡 Binance, 🔵 Bybit, 🟠 MEXC, 🔵 KuCoin, 🔷 OKX, 
-🟣 Gate.io, 🟠 Huobi, 🔵 Bitget
+🟡 Binance, 🔵 Bybit, 🟠 MEXC, 🔵 KuCoin, 🔷 OKX
 
-⏱️ <i>Система проверяет ${ACTIVE_SYMBOLS.length} монет каждые 2 секунды</i>
+⏱️ <i>Система проверяет ${ACTIVE_SYMBOLS.length} монет каждые 3 секунды</i>
   `;
 
   bot.sendMessage(chatId, helpMessage, { 
@@ -901,10 +850,8 @@ function askForSymbol(chatId) {
 }
 
 
-console.log(`✅ Улучшенный арбитражный бот полностью готов!`);
+console.log(`✅ Арбитражный бот запущен!`);
 console.log(`📊 База данных: ${CRYPTO_SYMBOLS.length} монет`);
 console.log(`🔥 Активный мониторинг: ${ACTIVE_SYMBOLS.length} монет`);
 console.log(`🏪 Подключено бирж: ${Object.keys(EXCHANGES).length}`);
-console.log(`⚡ Алгоритм: Улучшенный с анализом объемов`);
-
-
+console.log(`⏱️ Интервал проверки: 3 секунды`);
