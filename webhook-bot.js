@@ -6,7 +6,7 @@ import express from 'express';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://scrinnerapp-production.up.railway.app';
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8060;
 
 const app = express();
 app.use(express.json());
