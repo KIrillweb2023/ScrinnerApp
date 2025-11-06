@@ -853,7 +853,7 @@ function askForSymbol(chatId) {
 // console.log(`⏱️ Интервал проверки: 3 секунды`);
 
 //  WEBHOOK  
-app.post(`/bot${TOKEN}`, (req, res) => {
+app.post(`/webhook`, (req, res) => {
   console.log('📨 Получено сообщение от Telegram');
   try {
     bot.processUpdate(req.body);
@@ -886,7 +886,7 @@ app.get('/health', (req, res) => {
 // Установка webhook
 async function setupWebhook() {
   try {
-    const webhookUrl = `${WEBHOOK_URL}/bot${TOKEN}`;
+    const webhookUrl = `${WEBHOOK_URL}/webhook`;
     console.log('🔄 Устанавливаю webhook:', webhookUrl);
     
     await bot.setWebHook(webhookUrl);
@@ -917,7 +917,7 @@ bot.on('polling_error', (error) => {
 // Запуск сервера
 const server = app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Webhook сервер запущен на порту ${PORT}`);
-  console.log(`🌐 Webhook URL: ${WEBHOOK_URL}/bot${TOKEN}`);
+  console.log(`🌐 Webhook URL: ${WEBHOOK_URL}/webhook`);
   console.log(`📊 База данных: ${CRYPTO_SYMBOLS.length} монет`);
   console.log(`🔥 Активный мониторинг: ${ACTIVE_SYMBOLS.length} монет`);
   console.log(`🏪 Подключено бирж: ${Object.keys(EXCHANGES).length}`);
