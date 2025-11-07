@@ -1,7 +1,6 @@
 import { configDotenv } from 'dotenv';
 configDotenv();
 import TelegramBot from "node-telegram-bot-api";
-import axios from 'axios';
 import WebSocket from 'ws';
 import express from "express";
 
@@ -27,7 +26,7 @@ app.get('/health', (req, res) => {
 });
 
 // Запуск сервера
-app.listen(PORT, async () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   
   if (RAILWAY_PUBLIC_DOMAIN) {
