@@ -14,6 +14,16 @@ const bot = new TelegramBot(TOKEN);
 // Middleware
 app.use(express.json());
 
+process.on('SIGTERM', () => {
+  console.log('🔄 Получен SIGTERM, graceful shutdown...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🔄 Получен SIGINT, graceful shutdown...');
+  process.exit(0);
+});
+
 // Webhook endpoint
 app.post('/webhook', (req, res) => {
   bot.processUpdate(req.body);
