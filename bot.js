@@ -7,7 +7,7 @@ import express from "express";
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
-const RAILWAY_STATIC_URL = process.env.RAILWAY_PUBLIC_DOMAIN;
+const RAILWAY_PUBLIC_DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN;
 
 const app = express();
 const bot = new TelegramBot(TOKEN);
@@ -30,8 +30,8 @@ app.get('/health', (req, res) => {
 app.listen(PORT, async () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   
-  if (RAILWAY_STATIC_URL) {
-    const webhookUrl = `${RAILWAY_STATIC_URL}/webhook`;
+  if (RAILWAY_PUBLIC_DOMAIN) {
+    const webhookUrl = `https://${RAILWAY_PUBLIC_DOMAIN}/webhook`;
     try {
       await bot.setWebHook(webhookUrl);
       console.log(`✅ Webhook установлен: ${webhookUrl}`);
@@ -172,6 +172,14 @@ class WebSocketPriceManager {
             };
             ws.send(JSON.stringify(subscribeMsg));
           });
+        } else if (exchangeName === 'MEXC') {
+          config.streams.forEach(stream => {
+            const subscribeMsg = {
+              method: "SUBSCRIPTION", 
+              params: [stream]
+            };
+            ws.send(JSON.stringify(subscribeMsg));
+          });
         }
       });
 
@@ -286,112 +294,6 @@ const settingsKeyboard = {
 };
 
 
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await Promise.race([
-      axios.get(url, { 
-        timeout,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeout)
-      )
-    ]);
-    
-    const data = response.data;
-    cache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    throw new Error(`Request failed: ${error.message}`);
-  }
-}
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await Promise.race([
-      axios.get(url, { 
-        timeout,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeout)
-      )
-    ]);
-    
-    const data = response.data;
-    cache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    throw new Error(`Request failed: ${error.message}`);
-  }
-}
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await Promise.race([
-      axios.get(url, { 
-        timeout,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeout)
-      )
-    ]);
-    
-    const data = response.data;
-    cache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    throw new Error(`Request failed: ${error.message}`);
-  }
-}
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await Promise.race([
-      axios.get(url, { 
-        timeout,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeout)
-      )
-    ]);
-    
-    const data = response.data;
-    cache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    throw new Error(`Request failed: ${error.message}`);
-  }
-}
-
-
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   
@@ -448,32 +350,6 @@ bot.on('message', async (msg) => {
   }
 });
 
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const response = await Promise.race([
-      axios.get(url, { 
-        timeout,
-        headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), timeout)
-      )
-    ]);
-    
-    const data = response.data;
-    cache.set(cacheKey, data);
-    return data;
-  } catch (error) {
-    throw new Error(`Request failed: ${error.message}`);
-  }
-}
 
 async function searchSymbol(chatId, symbol) {
   if (!symbol.endsWith('USDT')) {
@@ -626,45 +502,6 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
     .slice(0, 8);
 }
 
-async function getAllEnhancedExchangePrices(symbol) {
-  const supportedExchanges = Object.entries(EXCHANGES)
-    .filter(([, exchange]) => 
-      exchange.supportedSymbols.includes(symbol) || 
-      exchange.supportedSymbols === CRYPTO_SYMBOLS
-    )
-    .sort(([,a], [,b]) => b.weight - a.weight)
-    .slice(0, 5);  
-
-  const pricePromises = supportedExchanges.map(async ([key, exchange]) => {
-    try {
-      const price = await Promise.race([
-        getPriceFromExchange(exchange.api(symbol), key, symbol),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1800))
-      ]);
-      
-      if (!price || price <= 0 || price > 1000000) {
-        return null;
-      }
-      
-      return {
-        name: exchange.name,
-        icon: getExchangeIcon(exchange.name),
-        price: Number(price.toFixed(8)), 
-        weight: exchange.weight,
-        key: key
-      };
-    } catch (error) {
-      return null;
-    }
-  });
-
-  const results = await Promise.allSettled(pricePromises);
-  
-  return results
-    .filter(result => result.status === 'fulfilled' && result.value !== null)
-    .map(result => result.value)
-    .filter(exchange => exchange !== null && exchange.price > 0);
-}
 
 async function startArbitrageMonitoring(chatId) {
   let checkCount = 0;
@@ -768,16 +605,6 @@ function setMinProfit(chatId, profit) {
   );
 }
 
-async function getCryptoPrice(symbol) {
-  try {
-    const response = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`, {
-      timeout: 2000
-    });
-    return parseFloat(response.data.price);
-  } catch (error) {
-    return null;
-  }
-}
 
 function getCryptoIcon(symbol) {
   const icons = {
@@ -828,18 +655,6 @@ function formatPrice(price) {
   return `$${price.toFixed(2)}`;
 }
 
-async function getPriceFromExchange(apiUrl, exchangeKey, symbol) {
-  const cacheKey = `${exchangeKey}_${symbol}`;
-  const data = await enhancedRequest(apiUrl, cacheKey, 1500);
-  
-  if (!data) throw new Error('No data');
-  
-  const exchange = EXCHANGES[exchangeKey];
-  const price = exchange.parser(data);
-  
-  if (!price || price <= 0) throw new Error('Invalid price');
-  return price;
-}
 
 function toggleEnhancedArbitrage(chatId) {
   const userSettings = arbitrageUsers.get(chatId) || { 
