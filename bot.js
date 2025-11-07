@@ -37,15 +37,25 @@ app.get('/', (req, res) => {
   });
 });
 
+
+
 // Запуск сервера - ТОЛЬКО POLLING
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
-  console.log('🔄 Запускаю POLLING режим...');
-  
-  // УБРАТЬ весь webhook код - использовать ТОЛЬКО polling
-  bot.startPolling();
-  
-  console.log('✅ Бот запущен в polling режиме');
+  if (RAILWAY_PUBLIC_DOMAIN) {
+    const webhookUrl = `https://${RAILWAY_PUBLIC_DOMAIN}/webhook`;
+    bot.setWebHook(webhookUrl).then(() => {
+      console.log(`✅ Webhook установлен: ${webhookUrl}`);
+      console.log('✅ Бот работает в чистом WebSocket режиме');
+    }).catch(error => {
+      console.error('❌ Ошибка webhook:', error.message);
+    });
+  }
+});
+
+app.post('/webhook', (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
 });
 
 //  МОНЕТЫ 
