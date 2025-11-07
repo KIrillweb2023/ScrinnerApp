@@ -35,23 +35,33 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
 
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'Bot is running', 
+    timestamp: new Date().toISOString(),
+    port: PORT
+  });
+});
+
 // Запуск сервера
-app.listen(PORT, "0.0.0.0", async () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
   
-  if (RAILWAY_PUBLIC_DOMAIN) {
-    const webhookUrl = `https://${RAILWAY_PUBLIC_DOMAIN}/webhook`;
-    try {
-      await bot.setWebHook(webhookUrl);
-      console.log(`✅ Webhook установлен: ${webhookUrl}`);
-    } catch (error) {
-      console.error('❌ Ошибка webhook, переключаюсь на polling');
+  // Запускаем webhook setup через setTimeout чтобы не блокировать запуск
+  setTimeout(() => {
+    if (RAILWAY_PUBLIC_DOMAIN) {
+      const webhookUrl = `https://${RAILWAY_PUBLIC_DOMAIN}/webhook`;
+      bot.setWebHook(webhookUrl).then(() => {
+        console.log(`✅ Webhook установлен: ${webhookUrl}`);
+      }).catch(error => {
+        console.error('❌ Ошибка webhook, переключаюсь на polling:', error.message);
+        bot.startPolling();
+      });
+    } else {
+      console.log('⚠️ Использую polling');
       bot.startPolling();
     }
-  } else {
-    console.log('⚠️ Использую polling');
-    bot.startPolling();
-  }
+  }, 2000);
 });
 
 
