@@ -24,12 +24,6 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Webhook endpoint
-app.post('/webhook', (req, res) => {
-  bot.processUpdate(req.body);
-  res.sendStatus(200);
-});
-
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
@@ -37,33 +31,22 @@ app.get('/health', (req, res) => {
 
 app.get('/', (req, res) => {
   res.status(200).json({ 
-    status: 'Bot is running', 
+    status: 'Bot is running in POLLING mode', 
     timestamp: new Date().toISOString(),
     port: PORT
   });
 });
 
-// Запуск сервера
+// Запуск сервера - ТОЛЬКО POLLING
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
+  console.log('🔄 Запускаю POLLING режим...');
   
-  // Запускаем webhook setup через setTimeout чтобы не блокировать запуск
-  setTimeout(() => {
-    if (RAILWAY_PUBLIC_DOMAIN) {
-      const webhookUrl = `https://${RAILWAY_PUBLIC_DOMAIN}/webhook`;
-      bot.setWebHook(webhookUrl).then(() => {
-        console.log(`✅ Webhook установлен: ${webhookUrl}`);
-      }).catch(error => {
-        console.error('❌ Ошибка webhook, переключаюсь на polling:', error.message);
-        bot.startPolling();
-      });
-    } else {
-      console.log('⚠️ Использую polling');
-      bot.startPolling();
-    }
-  }, 2000);
+  // УБРАТЬ весь webhook код - использовать ТОЛЬКО polling
+  bot.startPolling();
+  
+  console.log('✅ Бот запущен в polling режиме');
 });
-
 
 //  МОНЕТЫ 
 const CRYPTO_SYMBOLS = [
