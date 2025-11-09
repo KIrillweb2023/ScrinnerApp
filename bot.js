@@ -4,16 +4,16 @@ import TelegramBot from "node-telegram-bot-api";
 import axios from 'axios';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(TOKEN, { 
+const bot = new TelegramBot(TOKEN, {
   polling: {
-    interval: 300,
+    interval: 200,
     autoStart: true,
     params: {
-      timeout: 60
+      timeout: 30
     }
   },
   request: {
-    timeout: 30000,
+    timeout: 10000,
     agentOptions: {
       keepAlive: true,
       family: 4
@@ -67,18 +67,20 @@ const EXCHANGES = {
     api: (symbol) => `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`,
     parser: (data) => parseFloat(data.price),
     volume: (symbol) => `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`,
-    volumeParser: (data) => parseFloat(data.volume)
+    volumeParser: (data) => parseFloat(data.volume),
+    timeout: 1200
   },
   BYBIT: {
-    name: 'Bybit', 
+    name: 'Bybit',
     weight: 9,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym => 
+    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
       !['POPCATUSDT', 'MYROUSDT', 'DOGSUSDT', 'TURBOUSDT'].includes(sym)
     ),
     api: (symbol) => `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`,
     parser: (data) => parseFloat(data.result?.list?.[0]?.lastPrice || 0),
     volume: (symbol) => `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`,
-    volumeParser: (data) => parseFloat(data.result?.list?.[0]?.volume24h || 0)
+    volumeParser: (data) => parseFloat(data.result?.list?.[0]?.volume24h || 0),
+    timeout: 1200
   },
   MEXC: {
     name: 'MEXC',
@@ -87,29 +89,32 @@ const EXCHANGES = {
     api: (symbol) => `https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`,
     parser: (data) => parseFloat(data.price),
     volume: (symbol) => `https://api.mexc.com/api/v3/ticker/24hr?symbol=${symbol}`,
-    volumeParser: (data) => parseFloat(data.volume)
+    volumeParser: (data) => parseFloat(data.volume),
+    timeout: 1200
   },
   KUCOIN: {
     name: 'KuCoin',
     weight: 8,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym => 
+    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
       !sym.includes('BOME') && !sym.includes('POPCAT') && !sym.includes('TURBO')
     ),
     api: (symbol) => `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${symbol}`,
     parser: (data) => parseFloat(data.data?.price || 0),
     volume: (symbol) => `https://api.kucoin.com/api/v1/market/stats?symbol=${symbol}`,
-    volumeParser: (data) => parseFloat(data.data?.vol || 0)
+    volumeParser: (data) => parseFloat(data.data?.vol || 0),
+    timeout: 1200
   },
   OKX: {
     name: 'OKX',
     weight: 9,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym => 
+    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
       !['MYROUSDT', 'DOGSUSDT', 'BONKUSDT', 'TURBOUSDT'].includes(sym)
     ),
     api: (symbol) => `https://www.okx.com/api/v5/market/ticker?instId=${symbol}`,
     parser: (data) => parseFloat(data.data?.[0]?.last || 0),
     volume: (symbol) => `https://www.okx.com/api/v5/market/ticker?instId=${symbol}`,
-    volumeParser: (data) => parseFloat(data.data?.[0]?.vol24h || 0)
+    volumeParser: (data) => parseFloat(data.data?.[0]?.vol24h || 0),
+    timeout: 1200
   },
   GATEIO: {
     name: 'Gate.io',
@@ -118,29 +123,32 @@ const EXCHANGES = {
     api: (symbol) => `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${symbol.replace('USDT', '_USDT')}`,
     parser: (data) => parseFloat(data[0]?.last || 0),
     volume: (symbol) => `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${symbol.replace('USDT', '_USDT')}`,
-    volumeParser: (data) => parseFloat(data[0]?.base_volume || 0)
+    volumeParser: (data) => parseFloat(data[0]?.base_volume || 0),
+    timeout: 1200
   },
   HUOBI: {
     name: 'Huobi',
     weight: 7,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym => 
+    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
       !sym.includes('PEPE') && !sym.includes('BONK') && !sym.includes('MEME')
     ),
     api: (symbol) => `https://api.huobi.pro/market/detail/merged?symbol=${symbol.toLowerCase()}`,
     parser: (data) => parseFloat(data.tick?.close || 0),
     volume: (symbol) => `https://api.huobi.pro/market/detail?symbol=${symbol.toLowerCase()}`,
-    volumeParser: (data) => parseFloat(data.tick?.vol || 0)
+    volumeParser: (data) => parseFloat(data.tick?.vol || 0),
+    timeout: 1200
   },
   BITGET: {
     name: 'Bitget',
     weight: 7,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym => 
+    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
       !sym.includes('POPCAT') && !sym.includes('TURBO')
     ),
     api: (symbol) => `https://api.bitget.com/api/spot/v1/market/ticker?symbol=${symbol}`,
     parser: (data) => parseFloat(data.data?.close || 0),
     volume: (symbol) => `https://api.bitget.com/api/spot/v1/market/ticker?symbol=${symbol}`,
-    volumeParser: (data) => parseFloat(data.data?.baseVol || 0)
+    volumeParser: (data) => parseFloat(data.data?.baseVol || 0),
+    timeout: 1200
   }
 };
 
@@ -149,18 +157,18 @@ const arbitrageStats = new Map();
 const requestCache = new Map();
 
 class EnhancedCache {
-  constructor(duration = 2000) {
+  constructor(duration = 1500) {
     this.duration = duration;
   }
-  
+
   set(key, data) {
-    requestCache.set(key, { 
-      data, 
+    requestCache.set(key, {
+      data,
       timestamp: Date.now(),
-      hits: 0 
+      hits: 0
     });
   }
-  
+
   get(key) {
     const cached = requestCache.get(key);
     if (cached && (Date.now() - cached.timestamp < this.duration)) {
@@ -169,7 +177,7 @@ class EnhancedCache {
     }
     return null;
   }
-  
+
   cleanup() {
     const now = Date.now();
     for (const [key, value] of requestCache.entries()) {
@@ -180,14 +188,14 @@ class EnhancedCache {
   }
 }
 
-const cache = new EnhancedCache(2000);
+const cache = new EnhancedCache(1500);
 
 const mainKeyboard = {
   reply_markup: {
     keyboard: [
       ['💰 Все монеты', '🎯 Арбитраж ON/OFF'],
       ['📊 Статистика', '🔍 Поиск монеты'],
-      ['⚙️ Настройки', 'ℹ️ Помощь', ]
+      ['⚙️ Настройки', 'ℹ️ Помощь',]
     ],
     resize_keyboard: true
   }
@@ -205,25 +213,25 @@ const settingsKeyboard = {
 };
 
 
-async function enhancedRequest(url, cacheKey, timeout = 1500) {
+async function enhancedRequest(url, cacheKey, timeout = 1000) {
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
   try {
     const response = await Promise.race([
-      axios.get(url, { 
+      axios.get(url, {
         timeout,
-        headers: { 
+        headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'application/json',
           'Cache-Control': 'no-cache'
         }
       }),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Timeout')), timeout)
       )
     ]);
-    
+
     const data = response.data;
     cache.set(cacheKey, data);
     return data;
@@ -235,7 +243,7 @@ async function enhancedRequest(url, cacheKey, timeout = 1500) {
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  
+
   const welcomeMessage = `
 🚀 <b>АРБИТРАЖНЫЙ БОТ</b>
 
@@ -253,8 +261,8 @@ bot.onText(/\/start/, (msg) => {
 
 👇 <b>Выберите действие:</b>
   `;
-  
-  bot.sendMessage(chatId, welcomeMessage, { 
+
+  bot.sendMessage(chatId, welcomeMessage, {
     parse_mode: 'HTML',
     ...mainKeyboard
   });
@@ -276,9 +284,9 @@ bot.on('message', async (msg) => {
     '🎯 Прибыль: 1%': () => setMinProfit(chatId, 1),
     '🎯 Прибыль: 2%': () => setMinProfit(chatId, 2),
     '🎯 Прибыль: 5%': () => setMinProfit(chatId, 5),
-    '↩️ Назад': () => bot.sendMessage(chatId, "🏠 <b>Главное меню</b>", { 
+    '↩️ Назад': () => bot.sendMessage(chatId, "🏠 <b>Главное меню</b>", {
       parse_mode: 'HTML',
-      ...mainKeyboard 
+      ...mainKeyboard
     }),
     'ℹ️ Помощь': () => sendEnhancedHelp(chatId)
   };
@@ -295,14 +303,14 @@ async function searchSymbol(chatId, symbol) {
     symbol = symbol + 'USDT';
   }
 
-  const loadingMsg = await bot.sendMessage(chatId, 
-    `🔍 <b>Поиск монеты: ${symbol.replace('USDT', '')}</b>`, 
+  const loadingMsg = await bot.sendMessage(chatId,
+    `🔍 <b>Поиск монеты: ${symbol.replace('USDT', '')}</b>`,
     { parse_mode: 'HTML' }
   );
 
   try {
     const prices = await getAllEnhancedExchangePrices(symbol);
-    
+
     if (prices.length === 0) {
       await bot.editMessageText(
         `❌ <b>Монета не найдена</b>\n\n` +
@@ -318,9 +326,9 @@ async function searchSymbol(chatId, symbol) {
     }
 
     prices.sort((a, b) => a.price - b.price);
-    
+
     let message = `🔍 <b>РЕЗУЛЬТАТЫ ПОИСКА: ${getSymbolName(symbol)}</b>\n\n`;
-    
+
     prices.forEach((exchange, index) => {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔹';
       message += `${medal} ${exchange.icon} <b>${exchange.name}</b>\n`;
@@ -359,8 +367,8 @@ async function searchSymbol(chatId, symbol) {
 
 
 async function sendEnhancedPrices(chatId) {
-  const loadingMsg = await bot.sendMessage(chatId, 
-    "⚡ <b>Мгновенная загрузка цен...</b>\n", 
+  const loadingMsg = await bot.sendMessage(chatId,
+    "⚡ <b>Мгновенная загрузка цен...</b>\n",
     { parse_mode: 'HTML' }
   );
 
@@ -372,7 +380,7 @@ async function sendEnhancedPrices(chatId) {
 
     let message = "💰 <b>Мгновенные цены (Binance)</b>\n\n";
     let count = 0;
-    
+
     prices.forEach((result, index) => {
       const symbol = topSymbols[index];
       if (result.status === 'fulfilled' && result.value) {
@@ -380,7 +388,7 @@ async function sendEnhancedPrices(chatId) {
         count++;
         message += `${getCryptoIcon(symbol)} <b>${getSymbolName(symbol)}</b>\n`;
         message += `   💵 ${formatPrice(price)}\n`;
-        
+
         if (count % 3 === 0) message += '\n';
       }
     });
@@ -405,79 +413,84 @@ async function sendEnhancedPrices(chatId) {
 
 async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
   const opportunities = [];
-  
-  for (const symbol of ACTIVE_SYMBOLS) {
-    try {
-      const prices = await getAllEnhancedExchangePrices(symbol);
-      if (prices.length < 2) continue;
+  const batchSize = 5; // Обрабатываем по 5 монет за раз
 
-      
-      prices.sort((a, b) => a.price - b.price);
-      const bestBuy = prices[0];
-      const bestSell = prices[prices.length - 1];
-      
-      
-      const priceDifference = bestSell.price - bestBuy.price;
-      const profitPercentage = (priceDifference / bestBuy.price) * 100;
-      
-      
-      const netProfit = profitPercentage - 0.2;
-      
-      const isDifferentExchange = bestBuy.name !== bestSell.name;
-      const isSignificantProfit = netProfit >= minProfit;
-      const isPriceDifferenceSignificant = priceDifference > bestBuy.price * 0.0001; 
-      
-      if (isDifferentExchange && isSignificantProfit && isPriceDifferenceSignificant) {
-        opportunities.push({
-          symbol,
-          buyExchange: bestBuy,
-          sellExchange: bestSell,
-          buyPrice: bestBuy.price,
-          sellPrice: bestSell.price,
-          profit: Number(netProfit.toFixed(3)), 
-          priceDifference: Number(priceDifference.toFixed(6)),
-          timestamp: Date.now()
-        });
+  for (let i = 0; i < ACTIVE_SYMBOLS.length; i += batchSize) {
+    const batch = ACTIVE_SYMBOLS.slice(i, i + batchSize);
+
+    const batchPromises = batch.map(async (symbol) => {
+      try {
+        const prices = await getAllEnhancedExchangePrices(symbol);
+        if (prices.length < 2) return null;
+
+        prices.sort((a, b) => a.price - b.price);
+        const bestBuy = prices[0];
+        const bestSell = prices[prices.length - 1];
+
+        const priceDifference = bestSell.price - bestBuy.price;
+        const profitPercentage = (priceDifference / bestBuy.price) * 100;
+        const netProfit = profitPercentage - 0.2;
+
+        const isDifferentExchange = bestBuy.name !== bestSell.name;
+        const isSignificantProfit = netProfit >= minProfit;
+        const isPriceDifferenceSignificant = priceDifference > bestBuy.price * 0.0001;
+
+        if (isDifferentExchange && isSignificantProfit && isPriceDifferenceSignificant) {
+          return {
+            symbol,
+            buyExchange: bestBuy,
+            sellExchange: bestSell,
+            buyPrice: bestBuy.price,
+            sellPrice: bestSell.price,
+            profit: Number(netProfit.toFixed(3)),
+            priceDifference: Number(priceDifference.toFixed(6)),
+            timestamp: Date.now()
+          };
+        }
+      } catch (error) {
+        return null;
       }
-    } catch (error) {
-      continue;
-    }
+      return null;
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    opportunities.push(...batchResults.filter(opp => opp !== null));
   }
 
-
   return opportunities
-    .filter(opp => opp.profit > 0) 
+    .filter(opp => opp.profit > 0)
     .sort((a, b) => {
-     
       if (b.profit !== a.profit) return b.profit - a.profit;
       return b.priceDifference - a.priceDifference;
-    }) .slice(0, 8);
+    })
+    .slice(0, 8);
 }
 
 async function getAllEnhancedExchangePrices(symbol) {
   const supportedExchanges = Object.entries(EXCHANGES)
-    .filter(([, exchange]) => 
-      exchange.supportedSymbols.includes(symbol) || 
+    .filter(([, exchange]) =>
+      exchange.supportedSymbols.includes(symbol) ||
       exchange.supportedSymbols === CRYPTO_SYMBOLS
     )
-    .sort(([,a], [,b]) => b.weight - a.weight)
-    .slice(0, 5);  
+    .sort(([, a], [, b]) => b.weight - a.weight)
+    .slice(0, 4);  // Уменьшил с 5 до 4 бирж для проверки
 
+  // Параллельные запросы с индивидуальными таймаутами
   const pricePromises = supportedExchanges.map(async ([key, exchange]) => {
     try {
       const price = await Promise.race([
-        getPriceFromExchange(exchange.api(symbol), key, symbol),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1800))
+        getPriceFromExchange(exchange.api(symbol), key, symbol, exchange.timeout || 1000),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), exchange.timeout || 1000))
       ]);
-      
+
       if (!price || price <= 0 || price > 1000000) {
         return null;
       }
-      
+
       return {
         name: exchange.name,
         icon: getExchangeIcon(exchange.name),
-        price: Number(price.toFixed(8)), 
+        price: Number(price.toFixed(8)),
         weight: exchange.weight,
         key: key
       };
@@ -487,7 +500,7 @@ async function getAllEnhancedExchangePrices(symbol) {
   });
 
   const results = await Promise.allSettled(pricePromises);
-  
+
   return results
     .filter(result => result.status === 'fulfilled' && result.value !== null)
     .map(result => result.value)
@@ -497,7 +510,7 @@ async function getAllEnhancedExchangePrices(symbol) {
 async function startArbitrageMonitoring(chatId) {
   let checkCount = 0;
   const userSettings = arbitrageUsers.get(chatId);
-  
+
   if (!userSettings) return;
 
   arbitrageStats.set(chatId, { found: 0, checks: 0, lastFound: 0 });
@@ -508,39 +521,38 @@ async function startArbitrageMonitoring(chatId) {
     try {
       checkCount++;
       const opportunities = await findEnhancedArbitrageOpportunities(userSettings.minProfit);
-      
+
       const stats = arbitrageStats.get(chatId);
       stats.checks = checkCount;
       stats.found += opportunities.length;
-      
+
       if (opportunities.length > 0) {
         stats.lastFound = Date.now();
       }
 
       const now = Date.now();
       for (const opp of opportunities) {
-        const opportunityKey = `${opp.symbol}_${Math.round(opp.profit * 100)}`; 
-        
-        if (now - userSettings.lastNotification > 45000 || 
-            !userSettings.lastOpportunity || 
-            userSettings.lastOpportunity !== opportunityKey) {
-          
+        const opportunityKey = `${opp.symbol}_${Math.round(opp.profit * 100)}`;
+
+        if (now - userSettings.lastNotification > 30000 || // Уменьшил с 45000 до 30000
+          !userSettings.lastOpportunity ||
+          userSettings.lastOpportunity !== opportunityKey) {
+
           await sendArbitrageNotification(chatId, opp, checkCount);
           userSettings.lastNotification = now;
           userSettings.lastOpportunity = opportunityKey;
-          await new Promise(resolve => setTimeout(resolve, 500)); 
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
 
-     
-      if (checkCount % 15 === 0) { 
+      if (checkCount % 20 === 0) {
         const successRate = stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0;
         await bot.sendMessage(chatId,
           `🔍 <b>Мониторинг активен</b>\n` +
           `📊 Проверок: ${stats.checks}\n` +
           `🎯 Найдено: ${stats.found}\n` +
           `📈 Успешность: ${successRate}%\n` +
-          `⚡ Следующая проверка через 3с...`,
+          `⚡ Следующая проверка через 2с...`,
           { parse_mode: 'HTML' }
         );
       }
@@ -550,7 +562,7 @@ async function startArbitrageMonitoring(chatId) {
     }
 
     if (userSettings.active) {
-      setTimeout(monitor, 3000); 
+      setTimeout(monitor, 2000);
     }
   };
 
@@ -589,7 +601,7 @@ function setMinProfit(chatId, profit) {
   userSettings.minProfit = profit;
   arbitrageUsers.set(chatId, userSettings);
 
-  bot.sendMessage(chatId, 
+  bot.sendMessage(chatId,
     `✅ <b>НАСТРОЙКИ ОБНОВЛЕНЫ</b>\n\n` +
     `🎯 Минимальная прибыль: <b>${profit}%</b>\n\n` +
     `Теперь вы будете получать уведомления о сделках с прибылью от ${profit}%`,
@@ -613,37 +625,37 @@ function getCryptoIcon(symbol) {
     // Основные
     'BTCUSDT': '₿', 'ETHUSDT': '🔷', 'BNBUSDT': '🟡', 'SOLUSDT': '🔆', 'XRPUSDT': '✖️',
     'DOGEUSDT': '🐕', 'ADAUSDT': '🔷', 'AVAXUSDT': '❄️', 'DOTUSDT': '🟣', 'LINKUSDT': '🔗',
-    
+
     // Мем-коины
     'SHIBUSDT': '🐶', 'PEPEUSDT': '🐸', 'FLOKIUSDT': '🐺', 'BONKUSDT': '🐕', 'WIFUSDT': '🧢',
     'MEMEUSDT': '🖼️', 'BOMEUSDT': '📚', 'POPCATUSDT': '🐱', 'MYROUSDT': '🦴', 'DOGSUSDT': '🐶',
-    
+
     // DeFi
     'UNIUSDT': '🦄', 'CAKEUSDT': '🍰', 'COMPUSDT': '💸', 'AAVEUSDT': '👻', 'MKRUSDT': '⚙️',
-    
+
     // Gaming/Metaverse
     'SANDUSDT': '🏖️', 'MANAUSDT': '👾', 'ENJUSDT': '⚡', 'GALAUSDT': '🎮', 'AXSUSDT': '🪙',
-    
+
     // AI
     'FETUSDT': '🤖', 'AGIXUSDT': '🧠', 'RNDRUSDT': '🎨', 'TAOUSDT': '🔮', 'OCEANUSDT': '🌊',
-    
+
     // Layer 2
     'ARBUSDT': '⚡', 'OPUSDT': '🔴', 'MATICUSDT': '🔶', 'IMXUSDT': '🎮', 'METISUSDT': 'Μ',
-    
+
     // Privacy
     'XMRUSDT': '🔒', 'ZECUSDT': '🛡️', 'DASHUSDT': '💨', 'ZENUSDT': '☯️',
-    
+
     // Storage
     'FILUSDT': '📁', 'ARUSDT': '🗂️', 'STORJUSDT': '☁️', 'SCUSDT': '💾',
-    
+
     // Новые
     'SEIUSDT': '🌊', 'SUIUSDT': '💧', 'TIAUSDT': '🌐', 'INJUSDT': '💉', 'JUPUSDT': '🪐',
-    
+
     // Старые но популярные
     'LTCUSDT': '⚡', 'BCHUSDT': '₿', 'ATOMUSDT': '⚛️', 'ETCUSDT': '⛏️', 'XLMUSDT': '🌟',
     'ALGOUSDT': '🔵', 'VETUSDT': '🔷', 'EOSUSDT': '🅴', 'TRXUSDT': '🌐', 'FTMUSDT': '👻'
   };
-  
+
   return icons[symbol] || '💰';
 }
 
@@ -661,32 +673,32 @@ function getSymbolName(symbol) {
     'BTCUSDT': 'Bitcoin', 'ETHUSDT': 'Ethereum', 'BNBUSDT': 'BNB', 'SOLUSDT': 'Solana',
     'XRPUSDT': 'Ripple', 'DOGEUSDT': 'Dogecoin', 'ADAUSDT': 'Cardano', 'AVAXUSDT': 'Avalanche',
     'DOTUSDT': 'Polkadot', 'LINKUSDT': 'Chainlink', 'MATICUSDT': 'Polygon', 'LTCUSDT': 'Litecoin',
-    
+
     // Мем-коины
     'SHIBUSDT': 'Shiba Inu', 'PEPEUSDT': 'Pepe', 'FLOKIUSDT': 'Floki', 'BONKUSDT': 'Bonk',
     'WIFUSDT': 'dogwifhat', 'MEMEUSDT': 'Memecoin', 'BOMEUSDT': 'Book of Meme', 'POPCATUSDT': 'Popcat',
     'MYROUSDT': 'Myro', 'DOGSUSDT': 'Dogs',
-    
+
     // DeFi
     'UNIUSDT': 'Uniswap', 'CAKEUSDT': 'PancakeSwap', 'COMPUSDT': 'Compound', 'AAVEUSDT': 'Aave',
     'MKRUSDT': 'Maker', 'SNXUSDT': 'Synthetix', 'CRVUSDT': 'Curve', 'SUSHIUSDT': 'SushiSwap',
-    
+
     // AI
     'FETUSDT': 'Fetch.ai', 'AGIXUSDT': 'SingularityNET', 'RNDRUSDT': 'Render', 'TAOUSDT': 'Bittensor',
     'OCEANUSDT': 'Ocean Protocol',
-    
+
     // Gaming
     'SANDUSDT': 'The Sandbox', 'MANAUSDT': 'Decentraland', 'ENJUSDT': 'Enjin', 'GALAUSDT': 'Gala',
     'AXSUSDT': 'Axie Infinity',
-    
+
     // Layer 2
     'ARBUSDT': 'Arbitrum', 'OPUSDT': 'Optimism', 'IMXUSDT': 'Immutable X', 'METISUSDT': 'Metis',
-    
+
     // Новые
     'SEIUSDT': 'Sei', 'SUIUSDT': 'Sui', 'TIAUSDT': 'Celestia', 'INJUSDT': 'Injective', 'JUPUSDT': 'Jupiter',
     'PYTHUSDT': 'Pyth', 'JTOUSDT': 'Jito', 'PENDLEUSDT': 'Pendle', 'ONDOUSDT': 'Ondo'
   };
-  
+
   const baseSymbol = symbol.replace('USDT', '');
   return `${names[symbol] || baseSymbol} (${baseSymbol})`;
 }
@@ -698,31 +710,31 @@ function formatPrice(price) {
   return `$${price.toFixed(2)}`;
 }
 
-async function getPriceFromExchange(apiUrl, exchangeKey, symbol) {
+async function getPriceFromExchange(apiUrl, exchangeKey, symbol, timeout = 1000) {
   const cacheKey = `${exchangeKey}_${symbol}`;
-  const data = await enhancedRequest(apiUrl, cacheKey, 1500);
-  
+  const data = await enhancedRequest(apiUrl, cacheKey, timeout);
+
   if (!data) throw new Error('No data');
-  
+
   const exchange = EXCHANGES[exchangeKey];
   const price = exchange.parser(data);
-  
+
   if (!price || price <= 0) throw new Error('Invalid price');
   return price;
 }
 
 function toggleEnhancedArbitrage(chatId) {
-  const userSettings = arbitrageUsers.get(chatId) || { 
-    active: false, 
+  const userSettings = arbitrageUsers.get(chatId) || {
+    active: false,
     minProfit: 0.3,
     lastNotification: 0
   };
-  
+
   userSettings.active = !userSettings.active;
   arbitrageUsers.set(chatId, userSettings);
 
   if (userSettings.active) {
-    bot.sendMessage(chatId, 
+    bot.sendMessage(chatId,
       `🎯 <b>АРБИТРАЖ АКТИВИРОВАН</b>\n\n` +
       `📈 Минимальная прибыль: <b>${userSettings.minProfit}%</b>\n` +
       `⚡ Проверка каждые 2 секунды\n` +
@@ -733,7 +745,7 @@ function toggleEnhancedArbitrage(chatId) {
     startArbitrageMonitoring(chatId);
   } else {
     const stats = arbitrageStats.get(chatId) || { found: 0, checks: 0 };
-    bot.sendMessage(chatId, 
+    bot.sendMessage(chatId,
       `⏸️ <b>АРБИТРАЖ ОСТАНОВЛЕН</b>\n\n` +
       `📊 Результаты:\n` +
       `   🔍 Проверок: ${stats.checks}\n` +
@@ -747,10 +759,10 @@ function toggleEnhancedArbitrage(chatId) {
 function showEnhancedStats(chatId) {
   const stats = arbitrageStats.get(chatId) || { found: 0, checks: 0, lastFound: 0 };
   const userSettings = arbitrageUsers.get(chatId);
-  
+
   const successRate = stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0;
   const lastFound = stats.lastFound ? new Date(stats.lastFound).toLocaleTimeString() : 'не найдено';
-  
+
   const message = `
 📊 <b>СТАТИСТИКА СИСТЕМЫ</b>
 
@@ -770,15 +782,15 @@ function showEnhancedStats(chatId) {
    ⏱️ Интервал проверки: 3 секунды
   `;
 
-  bot.sendMessage(chatId, message, { 
+  bot.sendMessage(chatId, message, {
     parse_mode: 'HTML',
-    ...mainKeyboard 
+    ...mainKeyboard
   });
 }
 
 function sendEnhancedSettings(chatId) {
   const userSettings = arbitrageUsers.get(chatId) || { minProfit: 0.3 };
-  
+
   const message = `
 ⚙️ <b>НАСТРОЙКИ АРБИТРАЖА</b>
 
@@ -792,7 +804,7 @@ function sendEnhancedSettings(chatId) {
 1-2% - Высокая доходность
 5%   - Премиум возможности</code>
   `;
-  
+
   bot.sendMessage(chatId, message, {
     parse_mode: 'HTML',
     ...settingsKeyboard
@@ -800,7 +812,7 @@ function sendEnhancedSettings(chatId) {
 }
 
 function sendEnhancedHelp(chatId) {
-const helpMessage = `
+  const helpMessage = `
 🆘 <b>ПОМОЩЬ ПО АРБИТРАЖНОМУ БОТУ</b>
 
 ⚡ <b>Масштаб системы:</b>
@@ -828,17 +840,17 @@ const helpMessage = `
 ⏱️ <i>Система проверяет ${ACTIVE_SYMBOLS.length} монет каждые 3 секунды</i>
   `;
 
-  bot.sendMessage(chatId, helpMessage, { 
+  bot.sendMessage(chatId, helpMessage, {
     parse_mode: 'HTML',
     ...mainKeyboard
   });
 }
 
 function askForSymbol(chatId) {
-  bot.sendMessage(chatId, 
+  bot.sendMessage(chatId,
     "🔍 <b>ПОИСК МОНЕТЫ</b>\n\n" +
     "Введите тикер монеты (например: BTC, ETH, SOL, PEPE):",
-    { 
+    {
       parse_mode: 'HTML',
       reply_markup: { force_reply: true }
     }
