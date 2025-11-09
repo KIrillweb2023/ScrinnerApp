@@ -51,11 +51,11 @@ const CRYPTO_SYMBOLS = [
 
 const ACTIVE_SYMBOLS = [
   // Только самые ликвидные и волатильные
-  'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT',
-  'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'LINKUSDT',
-  'MATICUSDT', 'LTCUSDT', 'ATOMUSDT', 'SHIBUSDT', 'PEPEUSDT',
-  'ARBUSDT', 'OPUSDT', 'FETUSDT', 'AGIXUSDT', 'JUPUSDT',
-  'PYTHUSDT', 'GALAUSDT', 'SANDUSDT', 'MANAUSDT', 'BONKUSDT'
+  'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT',
+  'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'DOTUSDT',
+  'MATICUSDT', 'ATOMUSDT', 'SHIBUSDT', 'PEPEUSDT',
+  'ARBUSDT', 'OPUSDT', 'FETUSDT', 'JUPUSDT',
+  'PYTHUSDT', 'GALAUSDT', 'BONKUSDT'
 ];
 
 
@@ -324,26 +324,6 @@ async function searchSymbol(chatId, symbol) {
   }
 }
 
-function calculateRealArbitrageProfit(buyPrice, sellPrice, symbol) {
-  const profitPercentage = ((sellPrice - buyPrice) / buyPrice) * 100;
-
-  // Реальные комиссии (покупка + продажа + вывод)
-  let fees = 0.2; // базовые 0.2%
-
-  // Увеличиваем комиссии для мем-коинов (обычно выше комиссии на вывод)
-  if (['SHIBUSDT', 'PEPEUSDT', 'FLOKIUSDT', 'BONKUSDT', 'MEMEUSDT'].includes(symbol)) {
-    fees = 0.3;
-  }
-
-  // Для низкоценных активов добавляем комиссию за спред
-  if (buyPrice < 0.01) {
-    fees += 0.1;
-  }
-
-  return profitPercentage - fees;
-}
-
-
 async function sendEnhancedPrices(chatId) {
   const loadingMsg = await bot.sendMessage(chatId,
     "⚡ <b>Мгновенная загрузка цен...</b>\n",
@@ -411,8 +391,7 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
         if (minPrice.key === maxPrice.key) return null;
 
         const priceDifference = maxPrice.price - minPrice.price;
-        const profitPercentage = (priceDifference / minPrice.price) * 100;
-        const netProfit = profitPercentage - 0.1; // Уменьшили комиссии до 0.1%
+        const netProfit = calculateRealArbitrageProfit(minPrice.price, maxPrice.price, symbol);
 
         if (netProfit >= minProfit && priceDifference > minPrice.price * 0.00003) {
           const reliability = calculateReliabilityScore(minPrice, maxPrice);
@@ -425,7 +404,6 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
             sellPrice: maxPrice.price,
             profit: Number(netProfit.toFixed(3)),
             priceDifference: Number(priceDifference.toFixed(8)),
-            volumeScore: (minPrice.weight + maxPrice.weight) / 18, // Обновили нормализацию
             reliability: reliability,
             timestamp: Date.now()
           };
@@ -770,7 +748,7 @@ function toggleEnhancedArbitrage(chatId) {
       `📈 Минимальная прибыль: <b>${userSettings.minProfit}%</b>\n` +
       `⚡ Проверка каждые 1.5 секунды\n` +
       `🔔 Расширенный поиск\n` +
-      `🏪 6 бирж одновременно\n\n` +
+      `🏪 ${Object.keys(EXCHANGES).length} бирж одновременно\n\n` +
       `<i>Система ищет возможности...</i>`,
       { parse_mode: 'HTML', ...mainKeyboard }
     );
