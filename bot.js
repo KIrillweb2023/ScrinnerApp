@@ -105,34 +105,6 @@ const EXCHANGES = {
     api: (symbol) => `https://api.mexc.com/api/v3/ticker/price?symbol=${symbol}`,
     parser: (data) => parseFloat(data.price),
     timeout: 1400
-  },
-  GATEIO: {
-    name: 'Gate.io',
-    weight: 7,
-    supportedSymbols: CRYPTO_SYMBOLS,
-    api: (symbol) => `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${symbol.replace('USDT', '_USDT')}`,
-    parser: (data) => parseFloat(data[0]?.last || 0),
-    timeout: 1500
-  },
-  HUOBI: {
-    name: 'Huobi',
-    weight: 6,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
-      !sym.includes('PEPE') && !sym.includes('BONK') && !sym.includes('MEME')
-    ),
-    api: (symbol) => `https://api.huobi.pro/market/detail/merged?symbol=${symbol.toLowerCase()}`,
-    parser: (data) => parseFloat(data.tick?.close || 0),
-    timeout: 1500
-  },
-  BITGET: {
-    name: 'Bitget',
-    weight: 6,
-    supportedSymbols: CRYPTO_SYMBOLS.filter(sym =>
-      !sym.includes('POPCAT') && !sym.includes('TURBO')
-    ),
-    api: (symbol) => `https://api.bitget.com/api/spot/v1/market/ticker?symbol=${symbol}`,
-    parser: (data) => parseFloat(data.data?.close || 0),
-    timeout: 1500
   }
 };
 
@@ -423,9 +395,7 @@ async function sendEnhancedPrices(chatId) {
 
 async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
   const opportunities = [];
-
-  // Увеличиваем батч для скорости
-  const batchSize = 12;
+  const batchSize = 15; // Увеличили батч, так как бирж меньше
 
   for (let i = 0; i < ACTIVE_SYMBOLS.length; i += batchSize) {
     const batch = ACTIVE_SYMBOLS.slice(i, i + batchSize);
@@ -435,21 +405,16 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
         const prices = await getAllEnhancedExchangePrices(symbol);
         if (prices.length < 2) return null;
 
-        // Быстрая проверка - берем минимальную и максимальную цену
         const minPrice = prices[0];
         const maxPrice = prices[prices.length - 1];
 
-        // Проверяем что это разные биржи
         if (minPrice.key === maxPrice.key) return null;
 
         const priceDifference = maxPrice.price - minPrice.price;
         const profitPercentage = (priceDifference / minPrice.price) * 100;
+        const netProfit = profitPercentage - 0.1; // Уменьшили комиссии до 0.1%
 
-        // Уменьшаем комиссии для более чувствительного поиска
-        const netProfit = profitPercentage - 0.15; // 0.15% вместо 0.2%
-
-        // Более мягкие условия
-        if (netProfit >= minProfit && priceDifference > minPrice.price * 0.00005) {
+        if (netProfit >= minProfit && priceDifference > minPrice.price * 0.00003) {
           const reliability = calculateReliabilityScore(minPrice, maxPrice);
 
           return {
@@ -460,7 +425,7 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
             sellPrice: maxPrice.price,
             profit: Number(netProfit.toFixed(3)),
             priceDifference: Number(priceDifference.toFixed(8)),
-            volumeScore: (minPrice.weight + maxPrice.weight) / 20,
+            volumeScore: (minPrice.weight + maxPrice.weight) / 18, // Обновили нормализацию
             reliability: reliability,
             timestamp: Date.now()
           };
@@ -475,75 +440,30 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
     opportunities.push(...batchResults.filter(opp => opp !== null));
   }
 
-  // Сортируем по прибыли и надежности
   return opportunities
     .filter(opp => opp.profit >= minProfit)
     .sort((a, b) => {
-      // Приоритет прибыли, затем надежности
       if (b.profit !== a.profit) return b.profit - a.profit;
       return b.reliability - a.reliability;
     })
-    .slice(0, 8);
+    .slice(0, 10); // Увеличили лимит до 10
 }
 
-function findBestArbitragePair(prices, minProfit) {
-  let bestOpportunity = null;
-  let maxScore = 0;
-
-  for (let i = 0; i < prices.length - 1; i++) {
-    const buyExchange = prices[i];
-
-    for (let j = i + 1; j < prices.length; j++) {
-      const sellExchange = prices[j];
-
-      if (buyExchange.key === sellExchange.key) continue;
-
-      const priceDifference = sellExchange.price - buyExchange.price;
-
-      // Более строгая проверка минимальной разницы
-      if (priceDifference <= buyExchange.price * 0.0002) continue; // 0.02% минимальная разница
-
-      // Используем реальные комиссии
-      const netProfit = calculateRealArbitrageProfit(buyExchange.price, sellExchange.price, buyExchange.symbol);
-
-      if (netProfit < minProfit) continue;
-
-      const reliability = calculateReliabilityScore(buyExchange, sellExchange);
-      const volumeScore = (buyExchange.weight + sellExchange.weight) / 20;
-
-      // Улучшенный скоринг с приоритетом надежности
-      const opportunityScore = (netProfit * 0.5) + (reliability * 0.4) + (volumeScore * 0.1);
-
-      if (opportunityScore > maxScore && reliability >= 0.6) {
-        maxScore = opportunityScore;
-        bestOpportunity = {
-          buy: buyExchange,
-          sell: sellExchange,
-          profit: Number(netProfit.toFixed(3)),
-          priceDifference: Number(priceDifference.toFixed(8)),
-          volumeScore: Number(volumeScore.toFixed(2)),
-          reliability: Number(reliability.toFixed(2))
-        };
-      }
-    }
-  }
-
-  return bestOpportunity;
-}
 function calculateReliabilityScore(buyExchange, sellExchange) {
-  let score = 0.7; // Повысили базовый скоринг
+  let score = 0.8; // Повысили базовый скоринг, так как все биржи надежные
 
-  // Бонус за высоковесные биржи
-  if (buyExchange.weight >= 8 && sellExchange.weight >= 8) {
-    score += 0.2;
-  } else if (buyExchange.weight >= 7 && sellExchange.weight >= 7) {
+  // Все оставшиеся биржи достаточно надежны
+  if (buyExchange.weight >= 9 && sellExchange.weight >= 9) {
+    score += 0.15;
+  } else if (buyExchange.weight >= 8 && sellExchange.weight >= 8) {
     score += 0.1;
   }
 
-  // Проверенные пары бирж
+  // Проверенные пары среди надежных бирж
   const reliablePairs = [
     ['BINANCE', 'BYBIT'], ['BINANCE', 'OKX'], ['BYBIT', 'OKX'],
-    ['BINANCE', 'KUCOIN'], ['BYBIT', 'KUCOIN'], ['BINANCE', 'MEXC']
+    ['BINANCE', 'KUCOIN'], ['BYBIT', 'KUCOIN'], ['BINANCE', 'MEXC'],
+    ['OKX', 'KUCOIN'], ['BYBIT', 'MEXC']
   ];
 
   const isReliablePair = reliablePairs.some(pair =>
@@ -552,10 +472,10 @@ function calculateReliabilityScore(buyExchange, sellExchange) {
   );
 
   if (isReliablePair) {
-    score += 0.15;
+    score += 0.1;
   }
 
-  return Math.min(1, Math.max(0.4, score));
+  return Math.min(1, Math.max(0.6, score)); // Минимальная надежность 0.6
 }
 
 async function getAllEnhancedExchangePrices(symbol) {
@@ -564,8 +484,7 @@ async function getAllEnhancedExchangePrices(symbol) {
       exchange.supportedSymbols.includes(symbol) ||
       exchange.supportedSymbols === CRYPTO_SYMBOLS
     )
-    .sort(([, a], [, b]) => b.weight - a.weight)
-    .slice(0, 6); // Увеличили до 6 бирж
+    .sort(([, a], [, b]) => b.weight - a.weight);
 
   const pricePromises = supportedExchanges.map(async ([key, exchange]) => {
     try {
@@ -595,7 +514,6 @@ async function getAllEnhancedExchangePrices(symbol) {
     .map(result => result.value)
     .filter(exchange => exchange !== null && exchange.price > 0);
 
-  // Сортируем по цене для арбитража
   return validPrices.sort((a, b) => a.price - b.price);
 }
 
@@ -771,8 +689,11 @@ function getCryptoIcon(symbol) {
 
 function getExchangeIcon(exchangeName) {
   const icons = {
-    'Binance': '🟡', 'Bybit': '🔵', 'MEXC': '🟠',
-    'KuCoin': '🔵', 'OKX': '🔷'
+    'Binance': '🟡',
+    'Bybit': '🔵',
+    'OKX': '🔷',
+    'KuCoin': '🔵',
+    'MEXC': '🟠'
   };
   return icons[exchangeName] || '🏪';
 }
