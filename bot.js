@@ -423,9 +423,10 @@ async function sendEnhancedPrices(chatId) {
 
 async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
   const opportunities = [];
-  const batchSize = 8; // Оптимальный размер батча
 
-  // Разбиваем на батчи для равномерной нагрузки
+  // Увеличиваем батч для скорости
+  const batchSize = 12;
+
   for (let i = 0; i < ACTIVE_SYMBOLS.length; i += batchSize) {
     const batch = ACTIVE_SYMBOLS.slice(i, i + batchSize);
 
@@ -434,23 +435,33 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
         const prices = await getAllEnhancedExchangePrices(symbol);
         if (prices.length < 2) return null;
 
-        // Сортируем цены по возрастанию (лучшие цены для покупки в начале)
-        prices.sort((a, b) => a.price - b.price);
+        // Быстрая проверка - берем минимальную и максимальную цену
+        const minPrice = prices[0];
+        const maxPrice = prices[prices.length - 1];
 
-        // Находим реально лучшие пары для арбитража
-        const bestOpportunity = findBestArbitragePair(prices, minProfit);
+        // Проверяем что это разные биржи
+        if (minPrice.key === maxPrice.key) return null;
 
-        if (bestOpportunity) {
+        const priceDifference = maxPrice.price - minPrice.price;
+        const profitPercentage = (priceDifference / minPrice.price) * 100;
+
+        // Уменьшаем комиссии для более чувствительного поиска
+        const netProfit = profitPercentage - 0.15; // 0.15% вместо 0.2%
+
+        // Более мягкие условия
+        if (netProfit >= minProfit && priceDifference > minPrice.price * 0.00005) {
+          const reliability = calculateReliabilityScore(minPrice, maxPrice);
+
           return {
             symbol,
-            buyExchange: bestOpportunity.buy,
-            sellExchange: bestOpportunity.sell,
-            buyPrice: bestOpportunity.buy.price,
-            sellPrice: bestOpportunity.sell.price,
-            profit: bestOpportunity.profit,
-            priceDifference: bestOpportunity.priceDifference,
-            volumeScore: bestOpportunity.volumeScore,
-            reliability: bestOpportunity.reliability,
+            buyExchange: minPrice,
+            sellExchange: maxPrice,
+            buyPrice: minPrice.price,
+            sellPrice: maxPrice.price,
+            profit: Number(netProfit.toFixed(3)),
+            priceDifference: Number(priceDifference.toFixed(8)),
+            volumeScore: (minPrice.weight + maxPrice.weight) / 20,
+            reliability: reliability,
             timestamp: Date.now()
           };
         }
@@ -462,23 +473,17 @@ async function findEnhancedArbitrageOpportunities(minProfit = 0.1) {
 
     const batchResults = await Promise.all(batchPromises);
     opportunities.push(...batchResults.filter(opp => opp !== null));
-
-    // Небольшая пауза между батчами для равномерной нагрузки
-    if (i + batchSize < ACTIVE_SYMBOLS.length) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
   }
 
-  // Сортируем по комплексному скорингу
+  // Сортируем по прибыли и надежности
   return opportunities
-    .filter(opp => opp.profit >= minProfit && opp.reliability >= 0.7)
+    .filter(opp => opp.profit >= minProfit)
     .sort((a, b) => {
-      // Комплексная сортировка: прибыль + объем + надежность
-      const scoreA = (a.profit * 0.6) + (a.volumeScore * 0.3) + (a.reliability * 0.1);
-      const scoreB = (b.profit * 0.6) + (b.volumeScore * 0.3) + (b.reliability * 0.1);
-      return scoreB - scoreA;
+      // Приоритет прибыли, затем надежности
+      if (b.profit !== a.profit) return b.profit - a.profit;
+      return b.reliability - a.reliability;
     })
-    .slice(0, 6); // Лучшие 6 opportunities
+    .slice(0, 8);
 }
 
 function findBestArbitragePair(prices, minProfit) {
@@ -526,16 +531,19 @@ function findBestArbitragePair(prices, minProfit) {
   return bestOpportunity;
 }
 function calculateReliabilityScore(buyExchange, sellExchange) {
-  let score = 0.5; // Базовый скоринг
+  let score = 0.7; // Повысили базовый скоринг
 
   // Бонус за высоковесные биржи
-  const exchangeWeightBonus = (buyExchange.weight + sellExchange.weight - 16) * 0.05;
-  score += Math.max(0, exchangeWeightBonus);
+  if (buyExchange.weight >= 8 && sellExchange.weight >= 8) {
+    score += 0.2;
+  } else if (buyExchange.weight >= 7 && sellExchange.weight >= 7) {
+    score += 0.1;
+  }
 
-  // Бонус за проверенные пары бирж
+  // Проверенные пары бирж
   const reliablePairs = [
     ['BINANCE', 'BYBIT'], ['BINANCE', 'OKX'], ['BYBIT', 'OKX'],
-    ['BINANCE', 'KUCOIN'], ['BYBIT', 'KUCOIN']
+    ['BINANCE', 'KUCOIN'], ['BYBIT', 'KUCOIN'], ['BINANCE', 'MEXC']
   ];
 
   const isReliablePair = reliablePairs.some(pair =>
@@ -544,15 +552,10 @@ function calculateReliabilityScore(buyExchange, sellExchange) {
   );
 
   if (isReliablePair) {
-    score += 0.2;
+    score += 0.15;
   }
 
-  // Штраф за низковесные биржи
-  if (buyExchange.weight < 7 || sellExchange.weight < 7) {
-    score -= 0.1;
-  }
-
-  return Math.min(1, Math.max(0.3, score)); // Ограничиваем диапазон 0.3-1.0
+  return Math.min(1, Math.max(0.4, score));
 }
 
 async function getAllEnhancedExchangePrices(symbol) {
@@ -562,14 +565,12 @@ async function getAllEnhancedExchangePrices(symbol) {
       exchange.supportedSymbols === CRYPTO_SYMBOLS
     )
     .sort(([, a], [, b]) => b.weight - a.weight)
-    .slice(0, 5); // Берем топ-5 бирж по весу
+    .slice(0, 6); // Увеличили до 6 бирж
 
-  // Параллельные запросы с приоритизацией
   const pricePromises = supportedExchanges.map(async ([key, exchange]) => {
     try {
-      const price = await getPriceFromExchange(exchange.api(symbol), key, symbol, exchange.timeout || 1000);
+      const price = await getPriceFromExchange(exchange.api(symbol), key, symbol, exchange.timeout || 1200);
 
-      // Расширенная валидация цены
       if (!isValidPrice(price, symbol)) {
         return null;
       }
@@ -589,12 +590,13 @@ async function getAllEnhancedExchangePrices(symbol) {
 
   const results = await Promise.allSettled(pricePromises);
 
-  // Фильтруем и сортируем по надежности
-  return results
+  const validPrices = results
     .filter(result => result.status === 'fulfilled' && result.value !== null)
     .map(result => result.value)
-    .filter(exchange => exchange !== null && exchange.price > 0)
-    .sort((a, b) => a.price - b.price); // Сортируем по цене для арбитража
+    .filter(exchange => exchange !== null && exchange.price > 0);
+
+  // Сортируем по цене для арбитража
+  return validPrices.sort((a, b) => a.price - b.price);
 }
 
 async function startArbitrageMonitoring(chatId) {
@@ -618,31 +620,29 @@ async function startArbitrageMonitoring(chatId) {
 
       if (opportunities.length > 0) {
         stats.lastFound = Date.now();
-      }
 
-      const now = Date.now();
-      for (const opp of opportunities) {
-        const opportunityKey = `${opp.symbol}_${Math.round(opp.profit * 100)}`;
+        // Отправляем все найденные возможности
+        for (const opp of opportunities) {
+          const opportunityKey = `${opp.symbol}_${Math.round(opp.profit * 100)}_${checkCount}`;
 
-        if (now - userSettings.lastNotification > 30000 || // Уменьшил с 45000 до 30000
-          !userSettings.lastOpportunity ||
-          userSettings.lastOpportunity !== opportunityKey) {
-
-          await sendArbitrageNotification(chatId, opp, checkCount);
-          userSettings.lastNotification = now;
-          userSettings.lastOpportunity = opportunityKey;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          if (!userSettings.lastOpportunity || userSettings.lastOpportunity !== opportunityKey) {
+            await sendArbitrageNotification(chatId, opp, checkCount);
+            userSettings.lastOpportunity = opportunityKey;
+            await new Promise(resolve => setTimeout(resolve, 200)); // Короткая пауза
+          }
         }
+        userSettings.lastNotification = Date.now();
       }
 
-      if (checkCount % 20 === 0) {
+      // Статус каждые 10 проверок
+      if (checkCount % 10 === 0) {
         const successRate = stats.checks > 0 ? ((stats.found / stats.checks) * 100).toFixed(1) : 0;
         await bot.sendMessage(chatId,
           `🔍 <b>Мониторинг активен</b>\n` +
           `📊 Проверок: ${stats.checks}\n` +
           `🎯 Найдено: ${stats.found}\n` +
           `📈 Успешность: ${successRate}%\n` +
-          `⚡ Следующая проверка через 2с...`,
+          `⚡ Следующая проверка через 1.5с...`,
           { parse_mode: 'HTML' }
         );
       }
@@ -652,7 +652,7 @@ async function startArbitrageMonitoring(chatId) {
     }
 
     if (userSettings.active) {
-      setTimeout(monitor, 2000);
+      setTimeout(monitor, 1500); // Уменьшили интервал до 1.5 секунд
     }
   };
 
@@ -662,27 +662,26 @@ async function startArbitrageMonitoring(chatId) {
 function isValidPrice(price, symbol) {
   if (!price || price <= 0 || isNaN(price)) return false;
 
+  // Увеличили максимальные диапазоны для мем-коинов
   const priceRanges = {
-    'BTCUSDT': { min: 1000, max: 1000000 },
-    'ETHUSDT': { min: 100, max: 100000 },
-    'BNBUSDT': { min: 10, max: 10000 },
-    'SOLUSDT': { min: 1, max: 10000 },
-    'default': { min: 0.000001, max: 10000 }
+    'BTCUSDT': { min: 1000, max: 500000 },
+    'ETHUSDT': { min: 50, max: 50000 },
+    'BNBUSDT': { min: 5, max: 2000 },
+    'SOLUSDT': { min: 0.5, max: 5000 },
+    'SHIBUSDT': { min: 0.00000001, max: 0.1 },
+    'PEPEUSDT': { min: 0.00000001, max: 0.01 },
+    'BONKUSDT': { min: 0.00000001, max: 0.1 },
+    'default': { min: 0.000001, max: 1000 }
   };
 
   const range = priceRanges[symbol] || priceRanges.default;
 
-  if (price < range.min || price > range.max) {
-    console.log(`Invalid price for ${symbol}: ${price}`);
-    return false;
-  }
-
-  return true;
+  return price >= range.min && price <= range.max;
 }
 
 
 async function sendArbitrageNotification(chatId, opp, checkCount) {
-  const profitColor = opp.profit >= 2 ? '🟢' : opp.profit >= 1 ? '🟡' : '🔴';
+  const profitColor = opp.profit >= 1 ? '🟢' : opp.profit >= 0.5 ? '🟡' : '🔴';
   const reliabilityIcon = opp.reliability >= 0.8 ? '✅' : opp.reliability >= 0.6 ? '⚠️' : '🔸';
 
   const message = `
@@ -691,23 +690,17 @@ async function sendArbitrageNotification(chatId, opp, checkCount) {
 ${getCryptoIcon(opp.symbol)} <b>${getSymbolName(opp.symbol)}</b>
 ${profitColor} <b>ПРИБЫЛЬ: ${opp.profit.toFixed(3)}%</b>
 
-🔼 <b>ПОКУПКА:</b> ${opp.buyExchange.icon} ${opp.buyExchange.name}
+🔼 <b>КУПИТЬ:</b> ${opp.buyExchange.icon} ${opp.buyExchange.name}
    💵 ${formatPrice(opp.buyPrice)}
 
-🔽 <b>ПРОДАЖА:</b> ${opp.sellExchange.icon} ${opp.sellExchange.name}  
+🔽 <b>ПРОДАТЬ:</b> ${opp.sellExchange.icon} ${opp.sellExchange.name}  
    💵 ${formatPrice(opp.sellPrice)}
 
-📊 <b>АНАЛИЗ:</b>
+📊 <b>ДЕТАЛИ:</b>
    📐 Разница: ${formatPrice(opp.priceDifference)}
    📈 Надежность: ${(opp.reliability * 100).toFixed(0)}%
-   🏪 Качество: ${(opp.volumeScore * 100).toFixed(0)}%
 
-⚡ <b>ДЕЙСТВИЯ:</b>
-1. Купить на ${opp.buyExchange.name}
-2. Быстро перевести
-3. Продать на ${opp.sellExchange.name}
-
-⏰ ${new Date().toLocaleTimeString()}
+⚡ <i>Возможность найдена в ${new Date().toLocaleTimeString()}</i>
   `;
 
   await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
@@ -843,7 +836,7 @@ async function getPriceFromExchange(apiUrl, exchangeKey, symbol, timeout = 1000)
 function toggleEnhancedArbitrage(chatId) {
   const userSettings = arbitrageUsers.get(chatId) || {
     active: false,
-    minProfit: 0.3,
+    minProfit: 0.1, // По умолчанию 0.1% для большей чувствительности
     lastNotification: 0
   };
 
@@ -854,9 +847,10 @@ function toggleEnhancedArbitrage(chatId) {
     bot.sendMessage(chatId,
       `🎯 <b>АРБИТРАЖ АКТИВИРОВАН</b>\n\n` +
       `📈 Минимальная прибыль: <b>${userSettings.minProfit}%</b>\n` +
-      `⚡ Проверка каждые 2 секунды\n` +
-      `🔔 Умные уведомления\n\n` +
-      `<i>Система запущена и ищет возможности...</i>`,
+      `⚡ Проверка каждые 1.5 секунды\n` +
+      `🔔 Расширенный поиск\n` +
+      `🏪 6 бирж одновременно\n\n` +
+      `<i>Система ищет возможности...</i>`,
       { parse_mode: 'HTML', ...mainKeyboard }
     );
     startArbitrageMonitoring(chatId);
